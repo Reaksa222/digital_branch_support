@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="../static/css/style_upload.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Upload a File</h2>
+
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+            <label for="file">Select file to Upload:</label>
+            <input type="file" name="file" id="file">
+            <input type="submit" name="submit" value="Upload File" id="uploadButton">
+        </form>
+
+        <div class="message" id="uploadMessage"></div>
+        <!-- <a href="../templates/chat.html">Go Back to Chat</a> -->
+        <a href="../templates/showtext.php">Show Data</a>
+    </div>
+<script>
+        $(document).ready(function () {
+            $("#uploadForm").on("submit", function (e) {
+                e.preventDefault(); // Prevent the default form submission
+
+                // Show a message
+                $("#uploadMessage").text("Uploading file...");
+
+                // Change the background
+                changeBackground();
+
+                // Create a FormData object to send the file data
+                var formData = new FormData(this);
+
+                // Send the form data to the server using AJAX
+                $.ajax({
+                    type: "POST",
+                    url: "textup.php", // Specify the URL to your PHP script
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        // Display the response in the uploadResult div
+                        $("#uploadResult").html(response);
+                        // Reset the background after the form submission is complete
+                        resetBackground();
+                        // Show a success message
+                        $("#uploadMessage").text("File uploaded successfully!");
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error: " + error);
+                        // Reset the background after the form submission is complete
+                        resetBackground();
+                        // Show an error message
+                        $("#uploadMessage").text("Error uploading file: " + error);
+                    }
+                });
+            });
+        });
+
+        function changeBackground() {
+            // Change the background when the form is submitted
+            document.body.classList.add("background-change");
+        }
+
+        function resetBackground() {
+            // Reset the background to its original state
+            document.body.classList.remove("background-change");
+        }
+    </script>
+</body>
+
+</html>

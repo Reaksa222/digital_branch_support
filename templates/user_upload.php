@@ -1,0 +1,346 @@
+<?php
+require '../vendor/autoload.php';
+
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db = "demo";
+
+// Create a connection to the database
+$con = mysqli_connect($host, $user, $pass, $db);
+
+if (!$con) {
+    die("Connection failed: " . mysqli_connect_error());
+}
+
+if (isset($_POST['submit'])) {
+    $allowedExtensions = ['pdf', 'txt', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif', 'xlsx', 'xls'];
+    $allowedMimeTypes = [
+        'application/pdf',
+        'text/plain',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel',
+    ];
+    $filename = $_FILES['file1']['name'];
+    $fileTmpName = $_FILES['file1']['tmp_name'];
+    $fileExt = pathinfo($filename, PATHINFO_EXTENSION);
+    $description = $_POST['description'];
+    if (in_array($fileExt, $allowedExtensions) || $fileExt == 'txt') {
+        $uploadDirectory = 'uploads/';
+
+        if (!is_dir($uploadDirectory)) {
+            if (!mkdir($uploadDirectory, 0777, true)) {
+                die('Failed to create the "uploads" directory.');
+            }
+        }
+
+        $sql = 'SELECT MAX(id) as id FROM tbl_files';
+        $result = mysqli_query($con, $sql);
+        $newFilename = '';
+
+        if ($result && $result->num_rows > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $newFilename = $filename;
+        } else {
+            $newFilename = '1-' . $filename;
+        }
+
+        $filePath = $uploadDirectory . $newFilename;
+
+        if (move_uploaded_file($fileTmpName, $filePath)) {
+            $created = date('Y-m-d H:i');
+            $sql = "INSERT INTO tbl_files (filename, created, description) VALUES (?, ?, ?)";
+            $stmt = mysqli_prepare($con, $sql);
+            mysqli_stmt_bind_param($stmt, "sss", $newFilename, $created, $description);
+
+            if (mysqli_stmt_execute($stmt)) {
+                header("Location: user_upload.php?st=success");
+                exit;
+            } else {
+                echo "Error: " . mysqli_error($con);
+                header("Location: user_upload.php?st=error");
+                exit;
+            }
+        } else {
+            header("Location: user_upload.php?st=error");
+            exit;
+        }
+    } else {
+        header("Location: user_upload.php?st=error");
+        exit;
+    }
+}
+
+if (isset($_GET['delete'])) {
+    $fileToDelete = $_GET['delete'];
+    $filePath = 'uploads/' . $fileToDelete;
+
+    if (file_exists($filePath)) {
+        unlink($filePath);
+    }
+
+    $sql = "DELETE FROM tbl_files WHERE filename = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $fileToDelete);
+
+    if (mysqli_stmt_execute($stmt)) {
+        header("Location: user_upload.php?st=deleted");
+        exit;
+    } else {
+        echo "Error: " . mysqli_error($con);
+        header("Location: user_upload.php?st=error");
+        exit;
+    }
+}
+
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- <meta content="width=device-width, initial-scale=1.0" name="viewport"> -->
+    <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" type="text/css"> -->
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> -->
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Sharp" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="../Admin Dashboard/styles/multi_upload.css">
+    <title>Admin Dashboard</title>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Sidebar Section -->
+        <aside>
+            <div class="toggle">
+                <div class="logo">
+                    <img src="../Admin Dashboard/images/profile.jpg">
+                    <h2>User<span class="danger">Page</span></h2>
+                </div>
+                <div class="close" id="close-btn">
+                    <span class="material-icons-sharp">
+                        close
+                    </span>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <a href="../Admin Dashboard/user.php">
+                    <span class="material-icons-sharp">
+                        dashboard
+                    </span>
+                    <h3>Dashboard</h3>
+                </a>
+                <a href="#">
+                    <span class="fa fa-user-circle-o">
+                    </span>
+                    <h3>Create User</h3>
+                </a>
+                <a href="../templates/user_search.php">
+                    <span class="fa fa-search">
+                    </span>
+                    <h3>Search</h3>
+                </a>
+                <!-- <a href="#">
+                    <span class="material-icons-sharp">
+                        insights
+                    </span>
+                    <h3>Analytics</h3>
+                </a> -->
+                <a href="../templates/user_email.php">
+                    <span class="fa fa-address-card">
+                    </span>
+                    <h3>Contact</h3>
+                </a>
+                <a href="../templates/user_upload.php" class="active">
+                    <span class="fa fa-upload">
+                    </span>
+                    <h3>Multi_Upload</h3>
+                </a>
+                <a href="#">
+                    <span class="material-icons-sharp">
+                        inventory
+                    </span>
+                    <h3>Data List</h3>
+                </a>
+                
+                <!-- <a href="#">
+                    <span class="material-icons-sharp">
+                        report_gmailerrorred
+                    </span>
+                    <h3>Reports</h3>
+                </a> -->
+                <!-- <a href="#">
+                    <span class="material-icons-sharp">
+                        settings
+                    </span>
+                    <h3>Settings</h3>
+                </a> -->
+                <a href="../templates/login.php">
+                    <span class="material-icons-sharp">
+                        add
+                    </span>
+                    <h3>New Login</h3>
+                </a>
+                <a href="../templates/logout.php">
+                    <span class="material-icons-sharp">
+                        logout
+                    </span>
+                    <h3>Logout</h3>
+                </a>
+            </div>
+        </aside>
+        <!-- End of Sidebar Section -->
+
+        <!-- Main Content -->
+        <main>
+
+            <div class="container2">
+                <div class="back_button"><a href="../Admin Dashboard/user.php" class="back-button"><i
+                            class="fa fa-chevron-circle-left" style="font-size:28px"></i></a></div>
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card">
+                            <div class="card-header">
+                                Multi Upload
+                            </div>
+                            <div class="card-body">
+                                <form action="user_upload.php" method="post" enctype="multipart/form-data">
+                                    <div class="form-group">
+                                        <label for="file1">Select File to Upload:</label>
+                                        <input type="file" name="file1" class="form-control-file" id="file1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description:</label>
+                                        <input type="text" name="description" class="form-control" id="description">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="submit" name="submit" value="Upload" class="btn btn-info">
+                                    </div>
+                                </form>
+                                <?php if (isset($_GET['st'])) { ?>
+                                    <div
+                                        class="alert alert-<?php echo ($_GET['st'] == 'success') ? 'success' : 'danger'; ?> text-center">
+                                        <?php echo ($_GET['st'] == 'success') ? 'File Uploaded Successfully!' : 'Invalid File Extension!'; ?>
+                                    </div>
+                                <?php } ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+        <!-- End of Main Content -->
+
+        <!-- Right Section -->
+        <div class="right-section">
+            <div class="nav">
+                <button id="menu-btn">
+                    <span class="material-icons-sharp">
+                        menu
+                    </span>
+                </button>
+                <div class="dark-mode">
+                    <span class="material-icons-sharp active">
+                        light_mode
+                    </span>
+                    <span class="material-icons-sharp">
+                        dark_mode
+                    </span>
+                </div>
+
+                <div class="profile">
+                    <div class="info">
+                        <p>Welcome</p>
+                        <small class="text-muted">User</small>
+                    </div>
+                    <div class="profile-photo">
+                        <img src="../Admin Dashboard/images/profile.jpg">
+                    </div>
+                </div>
+
+            </div>
+            <!-- End of Nav -->
+
+            <div class="user-profile">
+                <div class="logo">
+                    <img src="../Admin Dashboard/images/profile.jpg">
+                    <h2>FTB Bank</h2>
+                    <p>Welcome to FTB Bank</p>
+                </div>
+            </div>
+
+            <div class="reminders">
+                <div class="header">
+                    <h2>Reminders</h2>
+                    <span class="material-icons-sharp">
+                        notifications_none
+                    </span>
+                </div>
+
+                <div class="notification">
+                    <div class="icon">
+                        <span class="material-icons-sharp">
+                            volume_up
+                        </span>
+                    </div>
+                    <div class="content">
+                        <div class="info">
+                            <h3>Support Time</h3>
+                            <small class="text_muted">
+                                08:00 AM - 5:00 PM
+                            </small>
+                        </div>
+                        <span class="material-icons-sharp">
+                            more_vert
+                        </span>
+                    </div>
+                </div>
+
+                <div class="notification deactive">
+                    <div class="icon">
+                        <span class="material-icons-sharp">
+                            edit
+                        </span>
+                    </div>
+                    <div class="content">
+                        <div class="info">
+                            <h3>Open Time</h3>
+                            <small class="text_muted">
+                                08:00 AM - 5:00 PM
+                            </small>
+                        </div>
+                        <span class="material-icons-sharp">
+                            more_vert
+                        </span>
+                    </div>
+                </div>
+
+                <div class="notification add-reminder">
+                    <div>
+                        <span class="material-icons-sharp">
+                            add
+                        </span>
+                        <h3>Add Reminder</h3>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- <script src="orders.js"></script> -->
+    <script src="../Admin Dashboard/index.js"></script>
+</body>
+
+</html>

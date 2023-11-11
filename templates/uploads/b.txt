@@ -1,0 +1,133 @@
+<?php
+require '../vendor/autoload.php';
+
+// Database configuration
+$db_host = 'localhost';
+$db_username = 'root';
+$db_password = '';
+$db_name = 'chatbotv2';
+
+// Create a database connection
+$conn = new mysqli($db_host, $db_username, $db_password, $db_name);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_FILES['file']) && !empty($_FILES['file']['name'])) {
+        $fileTmpPath = $_FILES['file']['tmp_name'];
+        $fileName = $_FILES['file']['name'];
+        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+
+        // Check file extension
+        if (in_array($fileExtension, ['txt', 'docx', 'pdf'])) {
+            // Read the file content as binary data
+            $fileContent = file_get_contents($fileTmpPath);
+            $filename = $conn->real_escape_string($fileName);
+            $filetype = $conn->real_escape_string($fileExtension);
+
+            // Insert the file data into the database
+            $sql = "INSERT INTO upload_file (filename, typefile, datainfile) VALUES (?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+
+            if ($stmt) {
+                $null = null; // Initialize a null variable
+                $stmt->bind_param("ssb", $filename, $filetype, $null);
+                $stmt->send_long_data(2, $fileContent); // Bind the file content as a binary BLOB
+                if ($stmt->execute()) {
+                    echo "File content inserted successfully.<br>";
+                } else {
+                    echo "Error inserting data: " . $stmt->error . "<br>";
+                }
+                $stmt->close();
+            } else {
+                echo "Error preparing SQL statement: " . $conn->error . "<br>";
+            }
+        } else {
+            echo "Error: Please upload a valid Text file (txt), Word file (docx), or PDF file (pdf).<br>";
+        }
+    } else {
+        echo "Error: File not uploaded or empty.<br>";
+    }
+
+    // Close the database connection
+    $conn->close();
+}
+?>
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="../static/css/style_upload.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Upload a File</h2>
+
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+            <label for="file">Select file to Upload:</label>
+            <input type="file" name="file" id="file">
+            <input type="submit" name="submit" value="Upload File" id="uploadButton">
+        </form>
+
+        <div class="message" id="uploadMessage"></div>
+        <!-- <a href="../templates/chat.html">Go Back to Chat</a> -->
+        <a href="../templates/showtext.php">Show Data</a>
+    </div>
+<script>
+        $(document).ready(function () {
+            $("#uploadForm").on("submit", function (e) {
+                e.preventDefault(); // Prevent the default form submission
+
+                // Show a message
+                $("#uploadMessage").text("Uploading file...");
+
+                // Change the background
+                changeBackground();
+
+                // Create a FormData object to send the file data
+                var formData = new FormData(this);
+
+                // Send the form data to the server using AJAX
+                $.ajax({
+                    type: "POST",
+                    url: "textup.php", // Specify the URL to your PHP script
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        // Display the response in the uploadResult div
+                        $("#uploadResult").html(response);
+                        // Reset the background after the form submission is complete
+                        resetBackground();
+                        // Show a success message
+                        $("#uploadMessage").text("File uploaded successfully!");
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error: " + error);
+                        // Reset the background after the form submission is complete
+                        resetBackground();
+                        // Show an error message
+                        $("#uploadMessage").text("Error uploading file: " + error);
+                    }
+                });
+            });
+        });
+
+        function changeBackground() {
+            // Change the background when the form is submitted
+            document.body.classList.add("background-change");
+        }
+
+        function resetBackground() {
+            // Reset the background to its original state
+            document.body.classList.remove("background-change");
+        }
+    </script>
+</body>
+
+</html>
